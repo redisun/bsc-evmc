@@ -18,7 +18,8 @@ package core
 
 import (
 	"math/big"
-
+	
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -44,6 +45,7 @@ func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common
 	} else {
 		beneficiary = *author
 	}
+	log.Info("block gas limit:", "limit", header.GasLimit)
 	return vm.BlockContext{
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
