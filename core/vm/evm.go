@@ -23,10 +23,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/evmc/v7/bindings/go/evmc"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/holiman/uint256"
 )
 
 // emptyCodeHash is used by create to ensure deployment is disallowed to already
@@ -158,30 +159,26 @@ func NewEVM(blockCtx BlockContext, txCtx TxContext, statedb StateDB, chainConfig
 	evm.vmConfig = vmConfig
 	evm.chainConfig = chainConfig
 	evm.chainRules = chainConfig.Rules(blockCtx.BlockNumber)
-	evm.interpreters = make([]Interpreter, 0, 1)
+	evm.interpreters = make([]Interpreter, 0, 2)
 	evm.abort = 0
 	evm.callGasTemp = 0
 	evm.depth = 0
 
 	if chainConfig.IsEWASM(blockCtx.BlockNumber) {
-		// to be implemented by EVM-C and Wagon PRs.
-		// if vmConfig.EWASMInterpreter != "" {
-		//  extIntOpts := strings.Split(vmConfig.EWASMInterpreter, ":")
-		//  path := extIntOpts[0]
-		//  options := []string{}
-		//  if len(extIntOpts) > 1 {
-		//    options = extIntOpts[1..]
-		//  }
-		//  evm.interpreters = append(evm.interpreters, NewEVMVCInterpreter(evm, vmConfig, options))
-		// } else {
-		// 	evm.interpreters = append(evm.interpreters, NewEWASMInterpreter(evm, vmConfig))
-		// }
-		panic("No supported ewasm interpreter yet.")
+		if vmConfig.EWASMInterpreter != "" {
+			evm.interpreters = append(evm.interpreters, &EVMC{ewasmModule, evm, evmc.CapabilityEWASM, false})
+		} else {
+			panic("The default ewasm interpreter not supported yet.")
+		}
 	}
 
-	// vmConfig.EVMInterpreter will be used by EVM-C, it won't be checked here
-	// as we always want to have the built-in EVM as the failover option.
-	evm.interpreters = append(evm.interpreters, NewEVMInterpreter(evm, vmConfig))
+	if vmConfig.EVMInterpreter != "" {
+		// Create custom EVM.
+		evm.interpreters = append(evm.interpreters, &EVMC{ewasmModule, evm, evmc.CapabilityEWASM, false})
+	} else {
+		evm.interpreters = append(evm.interpreters, NewEVMInterpreter(evm, vmConfig))
+	}
+	
 	evm.interpreter = evm.interpreters[0]
 
 	return evm
@@ -516,9 +513,9 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 //
 // The different between Create2 with Create is Create2 uses sha3(0xff ++ msg.sender ++ salt ++ sha3(init_code))[12:]
 // instead of the usual sender-and-nonce-hash as the address where the contract is initialized at.
-func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *big.Int, salt *uint256.Int) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
+func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *big.Int, salt *big.Int) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
 	codeAndHash := &codeAndHash{code: code}
-	contractAddr = crypto.CreateAddress2(caller.Address(), salt.Bytes32(), codeAndHash.Hash().Bytes())
+	contractAddr = crypto.CreateAddress2(caller.Address(), common.BigToHash(salt), codeAndHash.Hash().Bytes())
 	return evm.create(caller, codeAndHash, gas, endowment, contractAddr)
 }
 

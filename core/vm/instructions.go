@@ -623,7 +623,7 @@ func opCreate2(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]
 		bigEndowment = endowment.ToBig()
 	}
 	res, addr, returnGas, suberr := interpreter.evm.Create2(scope.Contract, input, gas,
-		bigEndowment, &salt)
+		bigEndowment, salt.ToBig())
 	// Push item on the stack based on the returned error.
 	if suberr != nil {
 		stackvalue.Clear()

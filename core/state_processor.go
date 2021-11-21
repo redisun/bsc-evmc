@@ -377,6 +377,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		allLogs []*types.Log
 		gp      = new(GasPool).AddGas(block.GasLimit())
 	)
+	log.Info("gaspool: %d", gp.Gas())
 	signer := types.MakeSigner(p.bc.chainConfig, block.Number())
 	statedb.TryPreload(block, signer)
 	var receipts = make([]*types.Receipt, 0)
@@ -415,6 +416,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 			return statedb, nil, nil, 0, err
 		}
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
+		log.Info("gas used: %d", usedGas)
 		receipt, err := applyTransaction(msg, p.config, p.bc, nil, gp, statedb, header, tx, usedGas, vmenv, bloomProcessors)
 		if err != nil {
 			return statedb, nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
