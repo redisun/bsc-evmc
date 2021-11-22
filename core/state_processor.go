@@ -417,7 +417,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 			return statedb, nil, nil, 0, err
 		}
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		log.Info("gas used: %d", usedGas)
+		log.Info("gas used:", "used", usedGas)
 		log.Info("gas pool:", "gp", gp)
 		log.Info("block:", "limit", block.GasLimit(), "used", block.GasUsed())
 
